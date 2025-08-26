@@ -5,6 +5,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.*;
 import org.testng.Assert;
+import utils.Driver;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +26,7 @@ public abstract class BasePage implements Page {
     protected Faker faker;
 
     protected BasePage() {
-        this.driver = Driver.getDriver();                // Inheritance + Encapsulation
+        this.driver = Driver.getDriver();              // Inheritance + Encapsulation
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         this.actions = new Actions(driver);
         this.faker = new Faker();
