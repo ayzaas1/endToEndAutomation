@@ -1,58 +1,52 @@
 package utils;
 
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.edge.EdgeDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.safari.SafariDriver;
 
-import java.time.Duration;
+public final class Driver {
+    private static final ThreadLocal<WebDriver> TL = new ThreadLocal<>();
 
-public class Driver {
+    public static WebDriver getDriver() {
+        WebDriver d = TL.get();
+        if (d == null) {
+            d = create();
+            TL.set(d);
+            d.manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(30));
+            d.manage().window().maximize();
+        }
+        return d;
+    }
 
-    static WebDriver driver;
+    public static boolean isInitialized() {
+        return TL.get() != null;
+    }
 
-    public static WebDriver getDriver(){
+    public static void closeDriver() {
+        WebDriver d = TL.get();
+        if (d != null) {
+            try {
+                try { d.manage().deleteAllCookies(); } catch (Exception ignored) {}
+                d.quit();
+            } catch (Exception ignored) {
+                // swallow to guarantee cleanup
+            } finally {
+                TL.remove(); // IMPORTANT in parallel
+            }
+        }
+    }
 
+    private static WebDriver create() {
         String browser = ConfigurationReader.getProperty("browser");
-
-        if (driver != null){
-            return driver;
-        }
-
-        switch (browser){
-            case "chrome":
-                driver = new ChromeDriver();
-                break;
-            case "firefox":
-                driver = new FirefoxDriver();
-                break;
-            case "edge":
-                driver = new EdgeDriver();
-                break;
-            case "safari":
-                driver= new SafariDriver();
-                break;
+        switch (browser) {
+            case "chrome": {
+                org.openqa.selenium.chrome.ChromeOptions o = new org.openqa.selenium.chrome.ChromeOptions();
+                o.setUnhandledPromptBehaviour(org.openqa.selenium.UnexpectedAlertBehaviour.DISMISS_AND_NOTIFY);
+                return new org.openqa.selenium.chrome.ChromeDriver(o);
+            }
+            case "firefox":  return new org.openqa.selenium.firefox.FirefoxDriver();
+            case "edge":     return new org.openqa.selenium.edge.EdgeDriver();
+            case "safari":   return new org.openqa.selenium.safari.SafariDriver();
             default:
-                throw new IllegalArgumentException("Unsupported browser! Please provide:" +
-                        "chrome, firefox, edge or safari");
-        }
-
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
-        driver.manage().window().maximize();
-
-        return driver;
-    }
-
-
-    public static void shutDownDriver(){
-        if (driver != null){
-            driver.quit();
-            driver = null;
+                throw new IllegalArgumentException("Unsupported browser: " + browser);
         }
     }
-
-
-
-
 }

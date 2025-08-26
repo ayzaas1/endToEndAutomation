@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="logDir">target/logs</Property>
+        <Property name="logFileName">cashwise-automation.log</Property>
+        <Property name="errorLogFileName">cashwise-errors.log</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+
+        <RollingFile name="FileAppender"
+                     fileName="${logDir}/${logFileName}"
+                     filePattern="${logDir}/${logFileName}-%d{yyyy-MM-dd}.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+        </RollingFile>
+
+        <RollingFile name="ErrorFileAppender"
+                     fileName="${logDir}/${errorLogFileName}"
+                     filePattern="${logDir}/${errorLogFileName}-%d{yyyy-MM-dd}.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <Filters>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Your app package -->
+        <Logger name="com.codewise" level="INFO" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+            <AppenderRef ref="ErrorFileAppender"/>
+        </Logger>
+
+        <!-- Add your test packages too (adjust names to match your code) -->
+        <Logger name="stepdefinitions" level="INFO" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <Logger name="runners" level="INFO" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Let everything else show INFO+ -->
+        <Root level="INFO">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+            <AppenderRef ref="ErrorFileAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>

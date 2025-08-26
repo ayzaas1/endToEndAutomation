@@ -1,0 +1,226 @@
+package api.stepDefinitions;
+
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.testng.Assert;
+import utils.DbUtils;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.hamcrest.Matchers.equalTo;
+
+public class ProductStepsTests {
+    String id;
+
+    RequestSpecification request;
+    Response response;
+    String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJleHAiOjE3NTg4MTQyNTEsImlhdCI6MTc1NjIyMjI1MSwidXNlcm5hbWUiOiJhZG1pbjIzMjMyQGNvZGV3aXNlLmNvbSJ9.OBYve6XOo3r5VxrYGHGtzkOZiQGRboafLbR6q04GB_QV-m1m5OVNNi1UVYYCQiNRn3r7mbBaa1zJTjJA025T7w";
+    JSONObject requestBody = new JSONObject();
+    Logger logger = LogManager.getLogger(ProductStepsTests.class);
+
+
+    @Given("base url {string}")
+    public void base_url(String baseUrl) {
+        request = RestAssured.given().baseUri(baseUrl).contentType(ContentType.JSON);
+    }
+
+    @Given("I have access")
+    public void i_have_access() {
+        request = request.auth().oauth2(token);
+        logger.info("adding api token for access");
+    }
+
+    @Given("I have the endpoint {string}")
+    public void i_have_the_endpoint(String endpoint) {
+        request = request.basePath(endpoint);
+        logger.info("endpoint tp test:" + endpoint);
+    }
+
+    @Given("I have {string} with {string} in request body")
+    public void i_have_with_in_request_body(String key, String value) {
+        requestBody.put(key, value);
+        logger.info("building request body with key" + " and value: " + value);
+    }
+
+    @When("I send POST request")
+    public void i_send_post_request() {
+        response = request.body(requestBody.toString()).post();
+        logger.info(response.prettyPrint());
+    }
+
+    @When("I retrieve id for {string}")
+    public void i_retrieve_id_for(String id) {
+        this.id = response.jsonPath().getString(id);
+        logger.info("id to test: " + id);
+    }
+
+    @When("I send PUT request")
+    public void i_send_put_request() {
+        response = request.body(requestBody.toString()).put(id);
+       logger.info("RESPONSE FROM PUT REQUEST: " + response.prettyPrint());
+    }
+
+    @Then("verify status code is {int}")
+    public void verify_status_code_is(Integer statusCode) {
+        System.out.println(response.prettyPrint());
+        Assert.assertEquals(statusCode, response.statusCode());
+    }
+
+    @Then("verify I have {string} with {string} in response body")
+    public void verify_i_have_with_in_response_body(String key, String value) {
+        response.then()
+                .body(key, equalTo(value));
+        logger.info("Verified that response contains value: " + value);
+    }
+
+    @Then("verify I have {string} with null in response body")
+    public void verify_i_have_with_null_in_response_body(String key) {
+        response.then()
+                .body(key, equalTo(null));
+    }
+
+    @Then("I delete the product")
+    public void i_delete_the_product() {
+
+        id = response.jsonPath().getString("product_id");
+
+        response = RestAssured.given()
+                .baseUri("https://backend.cashwise.us/api/myaccount")
+                .contentType(ContentType.JSON)
+                .auth()
+                .oauth2(token)
+                .when()
+                .delete("/products/" + id);
+
+        Assert.assertEquals(response.statusCode(), 200);
+
+    }
+
+    @Then("verify the product is not present in products list")
+    public void verify_the_product_is_not_present_in_products_list() {
+        response = RestAssured.given()
+                .baseUri("https://backend.cashwise.us/api/myaccount/products/" + id)
+                .contentType(ContentType.JSON)
+                .auth()
+                .oauth2(token)
+                .when()
+                .get();
+
+        Assert.assertEquals(response.statusCode(), 500);
+
+        String message = response.jsonPath().getString("details");
+        Assert.assertTrue(message.contains("Product not found"));
+    }
+
+    @Given("I have {string} with product")
+    public void i_have_with_product(String products) {
+
+        Response response = RestAssured.given()
+                .baseUri("https://backend.cashwise.us/api/myaccount")
+                .contentType(ContentType.JSON)
+                .auth()
+                .oauth2(token)
+                .get("/products/1718");
+        System.out.println(response.prettyPrint());
+
+        JSONObject product = new JSONObject();
+        product.put("product_title", response.jsonPath().getString("product_title"));
+        product.put("product_id", Integer.parseInt(response.jsonPath().getString("product_id")));
+        product.put("count_of_product", 0);
+        product.put("product_price", Double.parseDouble(response.jsonPath().getString("product_price")));
+        product.put("service_type_id", Integer.parseInt(response.jsonPath().getString("service_type.service_type_id")));
+        product.put("category_id", Integer.parseInt(response.jsonPath().getString("category.category_id")));
+        product.put("product_description", response.jsonPath().getString("product_description"));
+
+        JSONArray arrayOfProducts = new JSONArray();
+        arrayOfProducts.put(product);
+
+        requestBody.put(products, arrayOfProducts);
+
+    }
+
+    @Then("I delete {string} category in database")
+    public void i_delete_category_in_database(String categoryTitle) throws SQLException {
+        /*
+        delete from products where category_id = ?; delete from categories where id = ?;
+         */
+        Connection connection = DbUtils.getDBConnection();
+        PreparedStatement preparedStatement = connection.prepareStatement("delete from products where category_id = ?; delete from categories where id = ?");
+        preparedStatement.setInt(1, Integer.parseInt(id));
+        preparedStatement.setInt(2, Integer.parseInt(id));
+        Assert.assertTrue(preparedStatement.executeUpdate() == 0);
+
+    }
+
+    @Then("verify {string} is deleted from database using GET request")
+    public void verify_is_deleted_from_database_using_get_request(String categoryTitle) {
+        response = request.get("/categories/" + id);
+
+        System.out.println(response.prettyPrint());
+    }
+
+    @Given("I have {string} with {string} as query param")
+    public void i_have_with_as_query_param(String key, String value) {
+        request = request.queryParam(key, value);
+    }
+
+    @When("I send GET request")
+    public void i_send_get_request() {
+        response = request.get();
+    }
+
+    @Then("verify the invoice details in the response match the database")
+    public void verify_the_invoice_details_in_the_response_match_the_database() throws SQLException {
+
+        Map<String, String> dataFromAPI = new HashMap<>();
+        dataFromAPI.put("invoice_id", response.jsonPath().getString("invoice_id"));
+        dataFromAPI.put("invoice_title", response.jsonPath().getString("invoice_title"));
+        dataFromAPI.put("client_id", response.jsonPath().getString("client.client_id"));
+        dataFromAPI.put("client_name", response.jsonPath().getString("client.client_name"));
+        dataFromAPI.put("company_name", response.jsonPath().getString("client.company_name"));
+        dataFromAPI.put("email", response.jsonPath().getString("client.email"));
+        dataFromAPI.put("phone_number", response.jsonPath().getString("client.phone_number"));
+
+        System.out.println(dataFromAPI);
+
+        Connection connection = DbUtils.getDBConnection();
+        PreparedStatement preparedStatement = connection.prepareStatement("select id, title, i.client_id, client_name, company_name,\n" +
+                "       email, phone_number\n" +
+                "from invoices i\n" +
+                "join clients c\n" +
+                "on c.client_id = i.client_id\n" +
+                "where id = ?");
+        preparedStatement.setInt(1, Integer.parseInt(id));
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        Map<String, String> dataFromDB = new HashMap<>();
+
+        while (resultSet.next()) {
+            dataFromDB.put("invoice_id", resultSet.getString("id"));
+            dataFromDB.put("invoice_title", resultSet.getString("title"));
+            dataFromDB.put("client_id", resultSet.getString("client_id"));
+            dataFromDB.put("client_name", resultSet.getString("client_name"));
+            dataFromDB.put("company_name", resultSet.getString("company_name"));
+            dataFromDB.put("email", resultSet.getString("email"));
+            dataFromDB.put("phone_number", resultSet.getString("phone_number"));
+        }
+
+        Assert.assertEquals(dataFromAPI, dataFromDB);
+
+
+    }
+}

@@ -19,7 +19,7 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>7.11.0</version>
-
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
@@ -41,15 +41,25 @@
             <artifactId>javafaker</artifactId>
             <version>1.0.2</version>
         </dependency>
+
+        <!-- log4j, we MUST ALWAYS call the file : log4j2.xml, in other case it won't work
+        we must add 2 dependencies: log4j-api & log4j-core-->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
             <version>2.25.1</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.25.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <version>5.5.6</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>

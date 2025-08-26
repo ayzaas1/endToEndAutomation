@@ -1,12 +1,12 @@
 package utils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * DbUtils provides utility methods for database operations using JDBC.
@@ -18,6 +18,50 @@ public class DbUtils {
 
     private Connection connection;
     private String dbType;
+
+    private static String url = ConfigurationReader.getProperty("cashwiseDbUrl");
+    private static String username = ConfigurationReader.getProperty("cashwiseDbUsername");
+    private static String password = ConfigurationReader.getProperty("cashwiseDbPassword");
+
+    /**
+     * This will set up a connection with Cashwise database
+     * @return Connection to DB
+     * @throws SQLException
+     */
+    public static Connection getDBConnection() throws SQLException {
+        return DriverManager.getConnection(url, username, password);
+    }
+
+    /**
+     * This will close anu open connection to DB
+     * @author Benazir Bai
+     * @param connection
+     */
+    public static void closeConnection(Connection connection){
+        try{
+            if (connection != null){
+                connection.close();
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * closes ResultSet
+     * @param rs
+     */
+    public static void closeResultSet(ResultSet rs) {
+        try {
+            if (rs != null) {
+                rs.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * Constructs a DbUtils instance with the specified database properties.
